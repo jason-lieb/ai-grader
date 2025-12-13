@@ -1,17 +1,17 @@
-import * as LanguageModel from "@effect/ai/LanguageModel"
-import * as AiError from "@effect/ai/AiError"
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import type { ProjectFile } from "./FileScanner.js"
+import * as AiError from '@effect/ai/AiError'
+import * as LanguageModel from '@effect/ai/LanguageModel'
+import * as Context from 'effect/Context'
+import * as Effect from 'effect/Effect'
+import * as Layer from 'effect/Layer'
+import * as Option from 'effect/Option'
 import {
   FileReview,
   FileReviewResponse,
   Issue,
   ProjectReview,
-  ProjectSummaryResponse
-} from "../schemas/ReviewResult.js"
+  ProjectSummaryResponse,
+} from '../schemas/ReviewResult.js'
+import type {ProjectFile} from './FileScanner.js'
 
 const SYSTEM_PROMPT = `You are an expert code reviewer specializing in Node.js and TypeScript applications.
 Your task is to analyze code for:
@@ -44,7 +44,7 @@ export interface CodeAnalyzerService {
   ) => Effect.Effect<FileReview, AiError.AiError>
 }
 
-export class CodeAnalyzer extends Context.Tag("CodeAnalyzer")<
+export class CodeAnalyzer extends Context.Tag('CodeAnalyzer')<
   CodeAnalyzer,
   CodeAnalyzerService
 >() {}
@@ -60,7 +60,7 @@ export const CodeAnalyzerLive: Layer.Layer<CodeAnalyzer, never, LanguageModel.La
         projectContext?: string
       ): Effect.Effect<FileReview, AiError.AiError> =>
         Effect.gen(function* () {
-          const contextSection = projectContext ? `\n\nProject Context:\n${projectContext}` : ""
+          const contextSection = projectContext ? `\n\nProject Context:\n${projectContext}` : ''
 
           const userPrompt = `Review the following file: ${file.relativePath}${contextSection}
 
@@ -72,18 +72,18 @@ Analyze this code and provide a structured review. Focus on the most important i
 
           const response = yield* model.generateObject({
             prompt: [
-              { role: "system", content: SYSTEM_PROMPT },
-              { role: "user", content: userPrompt }
+              {role: 'system', content: SYSTEM_PROMPT},
+              {role: 'user', content: userPrompt},
             ],
             schema: FileReviewResponse,
-            objectName: "FileReview"
+            objectName: 'FileReview',
           })
 
           return new FileReview({
             file: file.relativePath,
             summary: response.value.summary,
             issues: response.value.issues.map(
-              (issue) =>
+              issue =>
                 new Issue({
                   severity: issue.severity,
                   category: issue.category,
@@ -91,10 +91,10 @@ Analyze this code and provide a structured review. Focus on the most important i
                   line: Option.fromNullable(issue.line),
                   description: issue.description,
                   recommendation: issue.recommendation,
-                  codeSnippet: Option.fromNullable(issue.codeSnippet)
+                  codeSnippet: Option.fromNullable(issue.codeSnippet),
                 })
             ),
-            positives: response.value.positives
+            positives: response.value.positives,
           })
         })
 
@@ -103,7 +103,7 @@ Analyze this code and provide a structured review. Focus on the most important i
       ): Effect.Effect<ProjectReview, AiError.AiError> =>
         Effect.gen(function* () {
           const filesToAnalyze = files
-            .filter((file) => file.content.length <= MAX_FILE_SIZE)
+            .filter(file => file.content.length <= MAX_FILE_SIZE)
             .slice(0, MAX_FILES_PER_BATCH)
 
           const skippedCount = files.length - filesToAnalyze.length
@@ -113,7 +113,7 @@ Analyze this code and provide a structured review. Focus on the most important i
             )
           }
 
-          const packageJson = files.find((f) => f.relativePath === "package.json")
+          const packageJson = files.find(f => f.relativePath === 'package.json')
           const projectContext = packageJson
             ? `This is a Node.js project. Here's the package.json:\n${packageJson.content.slice(0, 2000)}`
             : undefined
@@ -127,17 +127,17 @@ Analyze this code and provide a structured review. Focus on the most important i
             fileReviews.push(review)
           }
 
-          yield* Effect.logInfo("Generating project summary...")
+          yield* Effect.logInfo('Generating project summary...')
 
           const summaryPrompt = buildSummaryPrompt(fileReviews)
 
           const summaryResponse = yield* model.generateObject({
             prompt: [
-              { role: "system", content: SYSTEM_PROMPT },
-              { role: "user", content: summaryPrompt }
+              {role: 'system', content: SYSTEM_PROMPT},
+              {role: 'user', content: summaryPrompt},
             ],
             schema: ProjectSummaryResponse,
-            objectName: "ProjectSummary"
+            objectName: 'ProjectSummary',
           })
 
           return new ProjectReview({
@@ -145,7 +145,7 @@ Analyze this code and provide a structured review. Focus on the most important i
             summary: summaryResponse.value.summary,
             fileReviews,
             topIssues: summaryResponse.value.topIssues.map(
-              (issue) =>
+              issue =>
                 new Issue({
                   severity: issue.severity,
                   category: issue.category,
@@ -153,23 +153,23 @@ Analyze this code and provide a structured review. Focus on the most important i
                   line: Option.none(),
                   description: issue.description,
                   recommendation: issue.recommendation,
-                  codeSnippet: Option.none()
+                  codeSnippet: Option.none(),
                 })
             ),
-            recommendations: summaryResponse.value.recommendations
+            recommendations: summaryResponse.value.recommendations,
           })
         })
 
-      return { analyzeFile, analyzeProject }
+      return {analyzeFile, analyzeProject}
     })
   )
 
 const buildSummaryPrompt = (fileReviews: ReadonlyArray<FileReview>): string => {
   const reviewSummaries = fileReviews
-    .map((review) => {
+    .map(review => {
       const issueCount = review.issues.length
-      const criticalCount = review.issues.filter((i) => i.severity === "critical").length
-      const warningCount = review.issues.filter((i) => i.severity === "warning").length
+      const criticalCount = review.issues.filter(i => i.severity === 'critical').length
+      const warningCount = review.issues.filter(i => i.severity === 'warning').length
 
       return `### ${review.file}
 Summary: ${review.summary}
@@ -178,13 +178,13 @@ ${
   review.issues.length > 0
     ? `Top issues:\n${review.issues
         .slice(0, 3)
-        .map((i) => `- [${i.severity}] ${i.description}`)
-        .join("\n")}`
-    : "No issues found."
+        .map(i => `- [${i.severity}] ${i.description}`)
+        .join('\n')}`
+    : 'No issues found.'
 }
-Positives: ${review.positives.slice(0, 2).join(", ") || "None noted"}`
+Positives: ${review.positives.slice(0, 2).join(', ') || 'None noted'}`
     })
-    .join("\n\n")
+    .join('\n\n')
 
   return `Based on the following individual file reviews, provide an overall project assessment.
 

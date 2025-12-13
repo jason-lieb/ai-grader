@@ -1,24 +1,24 @@
-import * as FileSystem from "@effect/platform/FileSystem"
-import * as Path from "@effect/platform/Path"
-import type { PlatformError } from "@effect/platform/Error"
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
+import type {PlatformError} from '@effect/platform/Error'
+import * as FileSystem from '@effect/platform/FileSystem'
+import * as Path from '@effect/platform/Path'
+import * as Context from 'effect/Context'
+import * as Effect from 'effect/Effect'
+import * as Layer from 'effect/Layer'
+import * as Option from 'effect/Option'
 
-export type PackageManager = "npm" | "yarn" | "pnpm" | "bun"
+export type PackageManager = 'npm' | 'yarn' | 'pnpm' | 'bun'
 
 export type Framework =
-  | "express"
-  | "fastify"
-  | "nest"
-  | "koa"
-  | "hapi"
-  | "next"
-  | "nuxt"
-  | "remix"
-  | "astro"
-  | "effect"
+  | 'express'
+  | 'fastify'
+  | 'nest'
+  | 'koa'
+  | 'hapi'
+  | 'next'
+  | 'nuxt'
+  | 'remix'
+  | 'astro'
+  | 'effect'
 
 export interface RepoInfo {
   readonly name: Option.Option<string>
@@ -36,30 +36,30 @@ export interface RepoDetectorService {
   readonly detectRepo: (directory: string) => Effect.Effect<RepoInfo, PlatformError>
 }
 
-export class RepoDetector extends Context.Tag("RepoDetector")<
+export class RepoDetector extends Context.Tag('RepoDetector')<
   RepoDetector,
   RepoDetectorService
 >() {}
 
 const LOCKFILE_TO_MANAGER: Record<string, PackageManager> = {
-  "package-lock.json": "npm",
-  "yarn.lock": "yarn",
-  "pnpm-lock.yaml": "pnpm",
-  "bun.lockb": "bun",
-  "bun.lock": "bun"
+  'package-lock.json': 'npm',
+  'yarn.lock': 'yarn',
+  'pnpm-lock.yaml': 'pnpm',
+  'bun.lockb': 'bun',
+  'bun.lock': 'bun',
 }
 
 const FRAMEWORK_PACKAGES: Record<string, Framework> = {
-  express: "express",
-  fastify: "fastify",
-  "@nestjs/core": "nest",
-  koa: "koa",
-  "@hapi/hapi": "hapi",
-  next: "next",
-  nuxt: "nuxt",
-  "@remix-run/node": "remix",
-  astro: "astro",
-  effect: "effect"
+  express: 'express',
+  fastify: 'fastify',
+  '@nestjs/core': 'nest',
+  koa: 'koa',
+  '@hapi/hapi': 'hapi',
+  next: 'next',
+  nuxt: 'nuxt',
+  '@remix-run/node': 'remix',
+  astro: 'astro',
+  effect: 'effect',
 }
 
 export const RepoDetectorLive: Layer.Layer<RepoDetector, never, FileSystem.FileSystem | Path.Path> =
@@ -79,7 +79,7 @@ export const RepoDetectorLive: Layer.Layer<RepoDetector, never, FileSystem.FileS
 
           const allDeps = [
             ...Object.keys(packageJson.dependencies ?? {}),
-            ...Object.keys(packageJson.devDependencies ?? {})
+            ...Object.keys(packageJson.devDependencies ?? {}),
           ]
           const frameworks = detectFrameworks(allDeps)
 
@@ -92,11 +92,11 @@ export const RepoDetectorLive: Layer.Layer<RepoDetector, never, FileSystem.FileS
             frameworks,
             scripts: packageJson.scripts ?? {},
             dependencies: Object.keys(packageJson.dependencies ?? {}),
-            devDependencies: Object.keys(packageJson.devDependencies ?? {})
+            devDependencies: Object.keys(packageJson.devDependencies ?? {}),
           }
         })
 
-      return { detectRepo }
+      return {detectRepo}
     })
   )
 
@@ -129,7 +129,7 @@ const readPackageJson = (
   rootDir: string
 ): Effect.Effect<PackageJsonShape, PlatformError> =>
   Effect.gen(function* () {
-    const packageJsonPath = path.join(rootDir, "package.json")
+    const packageJsonPath = path.join(rootDir, 'package.json')
     const exists = yield* fs.exists(packageJsonPath)
 
     if (!exists) {
@@ -155,9 +155,9 @@ const detectTypeScript = (
 
     const allDeps = {
       ...packageJson.dependencies,
-      ...packageJson.devDependencies
+      ...packageJson.devDependencies,
     }
-    if ("typescript" in allDeps) return true
+    if ('typescript' in allDeps) return true
 
     return false
   })
@@ -178,24 +178,24 @@ const detectFrameworks = (dependencies: string[]): Framework[] => {
 export const formatRepoInfo = (info: RepoInfo): string => {
   const lines: string[] = []
 
-  const name = Option.getOrElse(info.name, () => "Unknown")
-  const version = Option.map(info.version, (v) => `v${v}`)
-  lines.push(`📦 ${name}${Option.isSome(version) ? ` (${version.value})` : ""}`)
+  const name = Option.getOrElse(info.name, () => 'Unknown')
+  const version = Option.map(info.version, v => `v${v}`)
+  lines.push(`📦 ${name}${Option.isSome(version) ? ` (${version.value})` : ''}`)
 
   if (Option.isSome(info.description)) {
     lines.push(`   ${info.description.value}`)
   }
 
-  lines.push("")
+  lines.push('')
 
   if (Option.isSome(info.packageManager)) {
     lines.push(`📋 Package Manager: ${info.packageManager.value}`)
   }
 
-  lines.push(`📘 TypeScript: ${info.hasTypeScript ? "Yes" : "No"}`)
+  lines.push(`📘 TypeScript: ${info.hasTypeScript ? 'Yes' : 'No'}`)
 
   if (info.frameworks.length > 0) {
-    lines.push(`🚀 Frameworks: ${info.frameworks.join(", ")}`)
+    lines.push(`🚀 Frameworks: ${info.frameworks.join(', ')}`)
   }
 
   const scriptCount = Object.keys(info.scripts).length
@@ -207,5 +207,5 @@ export const formatRepoInfo = (info: RepoInfo): string => {
     `📚 Dependencies: ${info.dependencies.length} prod, ${info.devDependencies.length} dev`
   )
 
-  return lines.join("\n")
+  return lines.join('\n')
 }

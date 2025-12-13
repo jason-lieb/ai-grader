@@ -1,9 +1,9 @@
-import * as FileSystem from "@effect/platform/FileSystem"
-import * as Path from "@effect/platform/Path"
-import type { PlatformError } from "@effect/platform/Error"
-import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
+import type {PlatformError} from '@effect/platform/Error'
+import * as FileSystem from '@effect/platform/FileSystem'
+import * as Path from '@effect/platform/Path'
+import * as Context from 'effect/Context'
+import * as Effect from 'effect/Effect'
+import * as Layer from 'effect/Layer'
 
 export interface ProjectFile {
   readonly path: string
@@ -24,7 +24,7 @@ export const defaultScanOptions: ScanOptions = {
   maxFiles: 50,
   maxFileBytes: 50000,
   ignorePatterns: [],
-  concurrency: 5
+  concurrency: 5,
 }
 
 export interface RepoSnapshot {
@@ -35,41 +35,41 @@ export interface RepoSnapshot {
 }
 
 const CODE_EXTENSIONS = new Set([
-  ".ts",
-  ".tsx",
-  ".js",
-  ".jsx",
-  ".mjs",
-  ".cjs",
-  ".json",
-  ".yaml",
-  ".yml"
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.json',
+  '.yaml',
+  '.yml',
 ])
 
 const IGNORE_DIRS = new Set([
-  "node_modules",
-  ".git",
-  "dist",
-  "build",
-  ".next",
-  "coverage",
-  ".turbo",
-  ".cache",
-  ".output",
-  ".nuxt",
-  ".vercel",
-  ".netlify",
-  "__pycache__",
-  ".venv",
-  "vendor"
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  '.next',
+  'coverage',
+  '.turbo',
+  '.cache',
+  '.output',
+  '.nuxt',
+  '.vercel',
+  '.netlify',
+  '__pycache__',
+  '.venv',
+  'vendor',
 ])
 
 const IGNORE_FILES = new Set([
-  "package-lock.json",
-  "yarn.lock",
-  "pnpm-lock.yaml",
-  "bun.lockb",
-  "bun.lock"
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml',
+  'bun.lockb',
+  'bun.lock',
 ])
 
 export interface FileScannerService {
@@ -79,7 +79,7 @@ export interface FileScannerService {
   ) => Effect.Effect<RepoSnapshot, PlatformError>
 }
 
-export class FileScanner extends Context.Tag("FileScanner")<FileScanner, FileScannerService>() {}
+export class FileScanner extends Context.Tag('FileScanner')<FileScanner, FileScannerService>() {}
 
 export const FileScannerLive: Layer.Layer<FileScanner, never, FileSystem.FileSystem | Path.Path> =
   Layer.effect(
@@ -93,7 +93,7 @@ export const FileScannerLive: Layer.Layer<FileScanner, never, FileSystem.FileSys
         opts?: Partial<ScanOptions>
       ): Effect.Effect<RepoSnapshot, PlatformError> =>
         Effect.gen(function* () {
-          const options = { ...defaultScanOptions, ...opts }
+          const options = {...defaultScanOptions, ...opts}
           const rootDir = path.resolve(directory)
 
           const allFilePaths: Array<{
@@ -124,31 +124,31 @@ export const FileScannerLive: Layer.Layer<FileScanner, never, FileSystem.FileSys
                 const fullPath = path.join(dir, entry)
                 const stat = yield* fs.stat(fullPath)
 
-                if (stat.type === "Directory") {
+                if (stat.type === 'Directory') {
                   if (!IGNORE_DIRS.has(entry)) {
                     yield* collectFiles(fullPath)
                   }
-                } else if (stat.type === "File") {
+                } else if (stat.type === 'File') {
                   const relativePath = path.relative(rootDir, fullPath)
 
                   if (IGNORE_FILES.has(entry)) {
-                    addSkipped("ignored-file")
+                    addSkipped('ignored-file')
                     continue
                   }
 
                   if (matchesIgnorePattern(relativePath)) {
-                    addSkipped("ignore-pattern")
+                    addSkipped('ignore-pattern')
                     continue
                   }
 
                   const ext = path.extname(entry)
 
                   if (!CODE_EXTENSIONS.has(ext)) {
-                    addSkipped("non-code-extension")
+                    addSkipped('non-code-extension')
                     continue
                   }
 
-                  allFilePaths.push({ fullPath, relativePath, extension: ext })
+                  allFilePaths.push({fullPath, relativePath, extension: ext})
                 }
               }
             })
@@ -159,8 +159,8 @@ export const FileScannerLive: Layer.Layer<FileScanner, never, FileSystem.FileSys
 
           const limitedPaths = allFilePaths.slice(0, options.maxFiles)
           if (allFilePaths.length > options.maxFiles) {
-            addSkipped("max-files-limit")
-            skippedReasons["max-files-limit"] = allFilePaths.length - options.maxFiles
+            addSkipped('max-files-limit')
+            skippedReasons['max-files-limit'] = allFilePaths.length - options.maxFiles
           }
 
           const readFileWithLimit = (fileInfo: {
@@ -173,7 +173,7 @@ export const FileScannerLive: Layer.Layer<FileScanner, never, FileSystem.FileSys
               const sizeBytes = Number(stat.size)
 
               if (sizeBytes > options.maxFileBytes) {
-                addSkipped("file-too-large")
+                addSkipped('file-too-large')
                 return null
               }
 
@@ -184,12 +184,12 @@ export const FileScannerLive: Layer.Layer<FileScanner, never, FileSystem.FileSys
                 relativePath: fileInfo.relativePath,
                 content,
                 extension: fileInfo.extension,
-                sizeBytes
+                sizeBytes,
               }
             })
 
           const results = yield* Effect.all(limitedPaths.map(readFileWithLimit), {
-            concurrency: options.concurrency
+            concurrency: options.concurrency,
           })
 
           const files = results.filter((f): f is ProjectFile => f !== null)
@@ -200,11 +200,11 @@ export const FileScannerLive: Layer.Layer<FileScanner, never, FileSystem.FileSys
             files,
             totalFiles,
             skippedFiles,
-            skippedReasons
+            skippedReasons,
           }
         })
 
-      return { scanProject }
+      return {scanProject}
     })
   )
 
@@ -216,7 +216,7 @@ export const getFileSummary = (files: ReadonlyArray<ProjectFile>): Record<string
   const summary: Record<string, number> = {}
 
   for (const file of files) {
-    const ext = file.extension || "no-extension"
+    const ext = file.extension || 'no-extension'
     summary[ext] = (summary[ext] || 0) + 1
   }
 
