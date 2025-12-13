@@ -31,10 +31,7 @@ export class FileReview extends Schema.Class<FileReview>("FileReview")({
 }) {}
 
 export class ProjectReview extends Schema.Class<ProjectReview>("ProjectReview")({
-  overallScore: Schema.Number.pipe(
-    Schema.int(),
-    Schema.between(1, 10)
-  ),
+  overallScore: Schema.Number.pipe(Schema.int(), Schema.between(1, 10)),
   summary: Schema.String,
   fileReviews: Schema.Array(FileReview),
   topIssues: Schema.Array(Issue),
@@ -63,11 +60,10 @@ export class FileReviewResponse extends Schema.Class<FileReviewResponse>("FileRe
   positives: Schema.Array(Schema.String)
 }) {}
 
-export class ProjectSummaryResponse extends Schema.Class<ProjectSummaryResponse>("ProjectSummaryResponse")({
-  overallScore: Schema.Number.pipe(
-    Schema.int(),
-    Schema.between(1, 10)
-  ),
+export class ProjectSummaryResponse extends Schema.Class<ProjectSummaryResponse>(
+  "ProjectSummaryResponse"
+)({
+  overallScore: Schema.Number.pipe(Schema.int(), Schema.between(1, 10)),
   summary: Schema.String,
   topIssues: Schema.Array(
     Schema.Struct({

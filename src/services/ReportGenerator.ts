@@ -42,100 +42,81 @@ export class ReportGenerator extends Context.Tag("ReportGenerator")<
   ReportGeneratorService
 >() {}
 
-export const ReportGeneratorLive: Layer.Layer<ReportGenerator> = Layer.succeed(
-  ReportGenerator,
-  {
-    generateConsoleReport: (review: ProjectReview) =>
-      Effect.gen(function* () {
-        const lines: string[] = []
+export const ReportGeneratorLive: Layer.Layer<ReportGenerator> = Layer.succeed(ReportGenerator, {
+  generateConsoleReport: (review: ProjectReview) =>
+    Effect.gen(function* () {
+      const lines: string[] = []
 
-        lines.push("")
-        lines.push(`${COLORS.bold}${"═".repeat(60)}${COLORS.reset}`)
-        lines.push(
-          `${COLORS.bold}${COLORS.cyan}📊 AI GRADER CODE REVIEW REPORT${COLORS.reset}`
-        )
-        lines.push(`${COLORS.bold}${"═".repeat(60)}${COLORS.reset}`)
-        lines.push("")
+      lines.push("")
+      lines.push(`${COLORS.bold}${"═".repeat(60)}${COLORS.reset}`)
+      lines.push(`${COLORS.bold}${COLORS.cyan}📊 AI GRADER CODE REVIEW REPORT${COLORS.reset}`)
+      lines.push(`${COLORS.bold}${"═".repeat(60)}${COLORS.reset}`)
+      lines.push("")
 
-        const scoreColor = getScoreColor(review.overallScore)
-        const scoreBar = generateScoreBar(review.overallScore)
-        lines.push(
-          `${COLORS.bold}Overall Score:${COLORS.reset} ${scoreColor}[${scoreBar}] ${review.overallScore}/10${COLORS.reset}`
-        )
-        lines.push("")
+      const scoreColor = getScoreColor(review.overallScore)
+      const scoreBar = generateScoreBar(review.overallScore)
+      lines.push(
+        `${COLORS.bold}Overall Score:${COLORS.reset} ${scoreColor}[${scoreBar}] ${review.overallScore}/10${COLORS.reset}`
+      )
+      lines.push("")
 
-        lines.push(`${COLORS.bold}${COLORS.blue}📋 Summary${COLORS.reset}`)
-        lines.push(`${COLORS.dim}${"─".repeat(40)}${COLORS.reset}`)
-        lines.push(review.summary)
-        lines.push("")
+      lines.push(`${COLORS.bold}${COLORS.blue}📋 Summary${COLORS.reset}`)
+      lines.push(`${COLORS.dim}${"─".repeat(40)}${COLORS.reset}`)
+      lines.push(review.summary)
+      lines.push("")
 
-        const stats = calculateStats(review)
-        lines.push(`${COLORS.bold}${COLORS.blue}📈 Statistics${COLORS.reset}`)
-        lines.push(`${COLORS.dim}${"─".repeat(40)}${COLORS.reset}`)
-        lines.push(`Files analyzed: ${stats.filesAnalyzed}`)
-        lines.push(
-          `Total issues: ${stats.totalIssues} (${COLORS.red}${stats.criticalCount} critical${COLORS.reset}, ${COLORS.yellow}${stats.warningCount} warnings${COLORS.reset}, ${COLORS.green}${stats.suggestionCount} suggestions${COLORS.reset})`
-        )
-        lines.push("")
+      const stats = calculateStats(review)
+      lines.push(`${COLORS.bold}${COLORS.blue}📈 Statistics${COLORS.reset}`)
+      lines.push(`${COLORS.dim}${"─".repeat(40)}${COLORS.reset}`)
+      lines.push(`Files analyzed: ${stats.filesAnalyzed}`)
+      lines.push(
+        `Total issues: ${stats.totalIssues} (${COLORS.red}${stats.criticalCount} critical${COLORS.reset}, ${COLORS.yellow}${stats.warningCount} warnings${COLORS.reset}, ${COLORS.green}${stats.suggestionCount} suggestions${COLORS.reset})`
+      )
+      lines.push("")
 
-        if (review.topIssues.length > 0) {
-          lines.push(
-            `${COLORS.bold}${COLORS.red}🚨 Top Issues${COLORS.reset}`
-          )
-          lines.push(`${COLORS.dim}${"─".repeat(40)}${COLORS.reset}`)
-
-          for (const issue of review.topIssues) {
-            lines.push(formatIssueForConsole(issue))
-            lines.push("")
-          }
-        }
-
-        lines.push(
-          `${COLORS.bold}${COLORS.blue}📁 File Reviews${COLORS.reset}`
-        )
+      if (review.topIssues.length > 0) {
+        lines.push(`${COLORS.bold}${COLORS.red}🚨 Top Issues${COLORS.reset}`)
         lines.push(`${COLORS.dim}${"─".repeat(40)}${COLORS.reset}`)
 
-        for (const fileReview of review.fileReviews) {
-          const fileIssueCount = fileReview.issues.length
-          const fileCritical = fileReview.issues.filter(
-            (i) => i.severity === "critical"
-          ).length
-
-          const statusIcon =
-            fileCritical > 0 ? "🔴" : fileIssueCount > 0 ? "🟡" : "🟢"
-
-          lines.push(
-            `${statusIcon} ${COLORS.bold}${fileReview.file}${COLORS.reset}`
-          )
-          lines.push(`   ${COLORS.dim}${fileReview.summary}${COLORS.reset}`)
-          lines.push(
-            `   Issues: ${fileIssueCount} | Positives: ${fileReview.positives.length}`
-          )
-        }
-        lines.push("")
-
-        if (review.recommendations.length > 0) {
-          lines.push(
-            `${COLORS.bold}${COLORS.green}💡 Recommendations${COLORS.reset}`
-          )
-          lines.push(`${COLORS.dim}${"─".repeat(40)}${COLORS.reset}`)
-
-          for (const rec of review.recommendations) {
-            lines.push(`${COLORS.cyan}•${COLORS.reset} ${rec}`)
-          }
+        for (const issue of review.topIssues) {
+          lines.push(formatIssueForConsole(issue))
           lines.push("")
         }
+      }
 
-        lines.push(`${COLORS.bold}${"═".repeat(60)}${COLORS.reset}`)
+      lines.push(`${COLORS.bold}${COLORS.blue}📁 File Reviews${COLORS.reset}`)
+      lines.push(`${COLORS.dim}${"─".repeat(40)}${COLORS.reset}`)
+
+      for (const fileReview of review.fileReviews) {
+        const fileIssueCount = fileReview.issues.length
+        const fileCritical = fileReview.issues.filter((i) => i.severity === "critical").length
+
+        const statusIcon = fileCritical > 0 ? "🔴" : fileIssueCount > 0 ? "🟡" : "🟢"
+
+        lines.push(`${statusIcon} ${COLORS.bold}${fileReview.file}${COLORS.reset}`)
+        lines.push(`   ${COLORS.dim}${fileReview.summary}${COLORS.reset}`)
+        lines.push(`   Issues: ${fileIssueCount} | Positives: ${fileReview.positives.length}`)
+      }
+      lines.push("")
+
+      if (review.recommendations.length > 0) {
+        lines.push(`${COLORS.bold}${COLORS.green}💡 Recommendations${COLORS.reset}`)
+        lines.push(`${COLORS.dim}${"─".repeat(40)}${COLORS.reset}`)
+
+        for (const rec of review.recommendations) {
+          lines.push(`${COLORS.cyan}•${COLORS.reset} ${rec}`)
+        }
         lines.push("")
+      }
 
-        yield* Effect.log(lines.join("\n"))
-      }),
+      lines.push(`${COLORS.bold}${"═".repeat(60)}${COLORS.reset}`)
+      lines.push("")
 
-    generateMarkdownReport: (review: ProjectReview) =>
-      Effect.succeed(generateMarkdown(review))
-  }
-)
+      yield* Effect.log(lines.join("\n"))
+    }),
+
+  generateMarkdownReport: (review: ProjectReview) => Effect.succeed(generateMarkdown(review))
+})
 
 const getScoreColor = (score: number): string => {
   if (score >= 8) return COLORS.green
@@ -233,12 +214,11 @@ const generateMarkdown = (review: ProjectReview): string => {
 
   for (const fileReview of review.fileReviews) {
     const fileIssueCount = fileReview.issues.length
-    const statusIcon =
-      fileReview.issues.some((i) => i.severity === "critical")
-        ? "🔴"
-        : fileIssueCount > 0
-          ? "🟡"
-          : "🟢"
+    const statusIcon = fileReview.issues.some((i) => i.severity === "critical")
+      ? "🔴"
+      : fileIssueCount > 0
+        ? "🟡"
+        : "🟢"
 
     sections.push(`### ${statusIcon} \`${fileReview.file}\``)
     sections.push("")
@@ -252,9 +232,7 @@ const generateMarkdown = (review: ProjectReview): string => {
         const emoji = SEVERITY_EMOJI[issue.severity]
         const line = Option.getOrUndefined(issue.line)
         const lineInfo = line ? ` (line ${line})` : ""
-        sections.push(
-          `- ${emoji} **${issue.category}**${lineInfo}: ${issue.description}`
-        )
+        sections.push(`- ${emoji} **${issue.category}**${lineInfo}: ${issue.description}`)
       }
       sections.push("")
     }

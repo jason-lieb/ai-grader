@@ -13,14 +13,6 @@ import {
   ProjectSummaryResponse
 } from "../schemas/ReviewResult.js"
 
-// =============================================================================
-// Constants
-// =============================================================================
-
-/**
- * System prompt for the AI code reviewer.
- * Defines the AI's role and focus areas.
- */
 const SYSTEM_PROMPT = `You are an expert code reviewer specializing in Node.js and TypeScript applications.
 Your task is to analyze code for:
 
@@ -38,87 +30,39 @@ Guidelines:
 - Acknowledge good patterns and practices when you see them
 - Focus on issues that would improve code quality, not stylistic preferences`
 
-/**
- * Maximum file size in characters to analyze.
- * Larger files are skipped to avoid token limits.
- */
 const MAX_FILE_SIZE = 15000
-
-/**
- * Maximum number of files to analyze per batch.
- */
 const MAX_FILES_PER_BATCH = 20
 
-// =============================================================================
-// Service Definition
-// =============================================================================
-
-/**
- * Service interface for AI-powered code analysis.
- */
 export interface CodeAnalyzerService {
-  /**
-   * Analyzes an entire project and returns a comprehensive review.
-   *
-   * @param files - The files to analyze
-   * @returns A complete project review with scores, issues, and recommendations
-   */
   readonly analyzeProject: (
     files: ReadonlyArray<ProjectFile>
   ) => Effect.Effect<ProjectReview, AiError.AiError>
 
-  /**
-   * Analyzes a single file and returns its review.
-   *
-   * @param file - The file to analyze
-   * @param projectContext - Optional context about the project
-   * @returns A file review with issues and positives
-   */
   readonly analyzeFile: (
     file: ProjectFile,
     projectContext?: string
   ) => Effect.Effect<FileReview, AiError.AiError>
 }
 
-/**
- * Tag for the CodeAnalyzer service.
- */
 export class CodeAnalyzer extends Context.Tag("CodeAnalyzer")<
   CodeAnalyzer,
   CodeAnalyzerService
 >() {}
 
-// =============================================================================
-// Implementation
-// =============================================================================
+export const CodeAnalyzerLive: Layer.Layer<CodeAnalyzer, never, LanguageModel.LanguageModel> =
+  Layer.effect(
+    CodeAnalyzer,
+    Effect.gen(function* () {
+      const model = yield* LanguageModel.LanguageModel
 
-/**
- * Live implementation of the CodeAnalyzer service.
- * Uses the Effect AI LanguageModel for code analysis.
- */
-export const CodeAnalyzerLive: Layer.Layer<
-  CodeAnalyzer,
-  never,
-  LanguageModel.LanguageModel
-> = Layer.effect(
-  CodeAnalyzer,
-  Effect.gen(function* () {
-    const model = yield* LanguageModel.LanguageModel
+      const analyzeFile = (
+        file: ProjectFile,
+        projectContext?: string
+      ): Effect.Effect<FileReview, AiError.AiError> =>
+        Effect.gen(function* () {
+          const contextSection = projectContext ? `\n\nProject Context:\n${projectContext}` : ""
 
-    /**
-     * Analyzes a single file using the AI model.
-     */
-    const analyzeFile = (
-      file: ProjectFile,
-      projectContext?: string
-    ): Effect.Effect<FileReview, AiError.AiError> =>
-      Effect.gen(function* () {
-        // Build the prompt
-        const contextSection = projectContext
-          ? `\n\nProject Context:\n${projectContext}`
-          : ""
-
-        const userPrompt = `Review the following file: ${file.relativePath}${contextSection}
+          const userPrompt = `Review the following file: ${file.relativePath}${contextSection}
 
 \`\`\`${file.extension.slice(1)}
 ${file.content}
@@ -126,136 +70,118 @@ ${file.content}
 
 Analyze this code and provide a structured review. Focus on the most important issues and be specific with your recommendations.`
 
-        // Call the AI model with structured output
-        const response = yield* model.generateObject({
-          prompt: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: userPrompt }
-          ],
-          schema: FileReviewResponse,
-          objectName: "FileReview"
+          const response = yield* model.generateObject({
+            prompt: [
+              { role: "system", content: SYSTEM_PROMPT },
+              { role: "user", content: userPrompt }
+            ],
+            schema: FileReviewResponse,
+            objectName: "FileReview"
+          })
+
+          return new FileReview({
+            file: file.relativePath,
+            summary: response.value.summary,
+            issues: response.value.issues.map(
+              (issue) =>
+                new Issue({
+                  severity: issue.severity,
+                  category: issue.category,
+                  file: file.relativePath,
+                  line: Option.fromNullable(issue.line),
+                  description: issue.description,
+                  recommendation: issue.recommendation,
+                  codeSnippet: Option.fromNullable(issue.codeSnippet)
+                })
+            ),
+            positives: response.value.positives
+          })
         })
 
-        // Transform the response into a FileReview
-        return new FileReview({
-          file: file.relativePath,
-          summary: response.value.summary,
-          issues: response.value.issues.map(
-            (issue) =>
-              new Issue({
-                severity: issue.severity,
-                category: issue.category,
-                file: file.relativePath,
-                line: Option.fromNullable(issue.line),
-                description: issue.description,
-                recommendation: issue.recommendation,
-                codeSnippet: Option.fromNullable(issue.codeSnippet)
-              })
-          ),
-          positives: response.value.positives
-        })
-      })
+      const analyzeProject = (
+        files: ReadonlyArray<ProjectFile>
+      ): Effect.Effect<ProjectReview, AiError.AiError> =>
+        Effect.gen(function* () {
+          const filesToAnalyze = files
+            .filter((file) => file.content.length <= MAX_FILE_SIZE)
+            .slice(0, MAX_FILES_PER_BATCH)
 
-    /**
-     * Analyzes an entire project.
-     */
-    const analyzeProject = (
-      files: ReadonlyArray<ProjectFile>
-    ): Effect.Effect<ProjectReview, AiError.AiError> =>
-      Effect.gen(function* () {
-        // Filter and limit files
-        const filesToAnalyze = files
-          .filter((file) => file.content.length <= MAX_FILE_SIZE)
-          .slice(0, MAX_FILES_PER_BATCH)
+          const skippedCount = files.length - filesToAnalyze.length
+          if (skippedCount > 0) {
+            yield* Effect.logWarning(
+              `Skipping ${skippedCount} files (too large or exceeds batch limit)`
+            )
+          }
 
-        const skippedCount = files.length - filesToAnalyze.length
-        if (skippedCount > 0) {
-          yield* Effect.logWarning(
-            `Skipping ${skippedCount} files (too large or exceeds batch limit)`
-          )
-        }
+          const packageJson = files.find((f) => f.relativePath === "package.json")
+          const projectContext = packageJson
+            ? `This is a Node.js project. Here's the package.json:\n${packageJson.content.slice(0, 2000)}`
+            : undefined
 
-        // Get project context from package.json if available
-        const packageJson = files.find(
-          (f) => f.relativePath === "package.json"
-        )
-        const projectContext = packageJson
-          ? `This is a Node.js project. Here's the package.json:\n${packageJson.content.slice(0, 2000)}`
-          : undefined
+          yield* Effect.logInfo(`Analyzing ${filesToAnalyze.length} files...`)
 
-        // Analyze each file
-        yield* Effect.logInfo(
-          `Analyzing ${filesToAnalyze.length} files...`
-        )
+          const fileReviews: FileReview[] = []
+          for (const file of filesToAnalyze) {
+            yield* Effect.logDebug(`Analyzing: ${file.relativePath}`)
+            const review = yield* analyzeFile(file, projectContext)
+            fileReviews.push(review)
+          }
 
-        const fileReviews: FileReview[] = []
-        for (const file of filesToAnalyze) {
-          yield* Effect.logDebug(`Analyzing: ${file.relativePath}`)
-          const review = yield* analyzeFile(file, projectContext)
-          fileReviews.push(review)
-        }
+          yield* Effect.logInfo("Generating project summary...")
 
-        // Generate project summary
-        yield* Effect.logInfo("Generating project summary...")
+          const summaryPrompt = buildSummaryPrompt(fileReviews)
 
-        const summaryPrompt = buildSummaryPrompt(fileReviews)
+          const summaryResponse = yield* model.generateObject({
+            prompt: [
+              { role: "system", content: SYSTEM_PROMPT },
+              { role: "user", content: summaryPrompt }
+            ],
+            schema: ProjectSummaryResponse,
+            objectName: "ProjectSummary"
+          })
 
-        const summaryResponse = yield* model.generateObject({
-          prompt: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: summaryPrompt }
-          ],
-          schema: ProjectSummaryResponse,
-          objectName: "ProjectSummary"
+          return new ProjectReview({
+            overallScore: summaryResponse.value.overallScore,
+            summary: summaryResponse.value.summary,
+            fileReviews,
+            topIssues: summaryResponse.value.topIssues.map(
+              (issue) =>
+                new Issue({
+                  severity: issue.severity,
+                  category: issue.category,
+                  file: issue.file,
+                  line: Option.none(),
+                  description: issue.description,
+                  recommendation: issue.recommendation,
+                  codeSnippet: Option.none()
+                })
+            ),
+            recommendations: summaryResponse.value.recommendations
+          })
         })
 
-        // Build the final ProjectReview
-        return new ProjectReview({
-          overallScore: summaryResponse.value.overallScore,
-          summary: summaryResponse.value.summary,
-          fileReviews,
-          topIssues: summaryResponse.value.topIssues.map(
-            (issue) =>
-              new Issue({
-                severity: issue.severity,
-                category: issue.category,
-                file: issue.file,
-                line: Option.none(),
-                description: issue.description,
-                recommendation: issue.recommendation,
-                codeSnippet: Option.none()
-              })
-          ),
-          recommendations: summaryResponse.value.recommendations
-        })
-      })
+      return { analyzeFile, analyzeProject }
+    })
+  )
 
-    return { analyzeFile, analyzeProject }
-  })
-)
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/**
- * Builds the prompt for generating a project summary.
- */
 const buildSummaryPrompt = (fileReviews: ReadonlyArray<FileReview>): string => {
   const reviewSummaries = fileReviews
     .map((review) => {
       const issueCount = review.issues.length
-      const criticalCount = review.issues.filter(
-        (i) => i.severity === "critical"
-      ).length
-      const warningCount = review.issues.filter(
-        (i) => i.severity === "warning"
-      ).length
+      const criticalCount = review.issues.filter((i) => i.severity === "critical").length
+      const warningCount = review.issues.filter((i) => i.severity === "warning").length
 
       return `### ${review.file}
 Summary: ${review.summary}
 Issues: ${issueCount} total (${criticalCount} critical, ${warningCount} warnings)
-${review.issues.length > 0 ? `Top issues:\n${review.issues.slice(0, 3).map((i) => `- [${i.severity}] ${i.description}`).join("\n")}` : "No issues found."}
+${
+  review.issues.length > 0
+    ? `Top issues:\n${review.issues
+        .slice(0, 3)
+        .map((i) => `- [${i.severity}] ${i.description}`)
+        .join("\n")}`
+    : "No issues found."
+}
 Positives: ${review.positives.slice(0, 2).join(", ") || "None noted"}`
     })
     .join("\n\n")
@@ -276,4 +202,3 @@ Provide a comprehensive project review including:
 
 Be honest but constructive in your assessment.`
 }
-
