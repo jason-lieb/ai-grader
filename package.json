@@ -6,7 +6,7 @@
   "description": "A basic Effect CLI application",
   "repository": {
     "type": "git",
-    "url": "<PLACEHOLDER>"
+    "url": "git+https://github.com/jason-lieb/ai-grader.git"
   },
   "publishConfig": {
     "access": "public",
