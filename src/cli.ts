@@ -6,12 +6,12 @@ import * as Console from 'effect/Console'
 import * as Effect from 'effect/Effect'
 import * as Layer from 'effect/Layer'
 import * as Option from 'effect/Option'
-import {AiLive, DEFAULT_MODEL} from './config/Bedrock.js'
-import {CliConfig} from './config/CliConfig.js'
-import {Review, ReviewLive} from './services/Review.js'
-import {File, FileLive, getFileSummary, defaultScanOptions} from './services/File.js'
-import {Stats, StatsLive, formatRepoInfo} from './services/Stats.js'
-import {Report, ReportLive} from './services/Report.js'
+import {AiLive, DEFAULT_MODEL} from './config/bedrock.js'
+import {Cli} from './config/cli.js'
+import {Review, ReviewLive} from './services/review.js'
+import {File, FileLive, getFileSummary, defaultScanOptions} from './services/file.js'
+import {Stats, StatsLive, formatRepoInfo} from './services/stats.js'
+import {Report, ReportLive} from './services/report.js'
 
 const ServicesLive = Layer.mergeAll(
   FileLive,
@@ -21,7 +21,7 @@ const ServicesLive = Layer.mergeAll(
 )
 
 const makeAppLayer = (model: string) =>
-  ServicesLive.pipe(Layer.provide(Layer.succeed(CliConfig, {model})))
+  ServicesLive.pipe(Layer.provide(Layer.succeed(Cli, {model})))
 
 const directoryArg = Args.directory({
   name: 'directory',

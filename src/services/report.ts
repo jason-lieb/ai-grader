@@ -2,7 +2,7 @@ import * as Context from 'effect/Context'
 import * as Effect from 'effect/Effect'
 import * as Layer from 'effect/Layer'
 import * as Option from 'effect/Option'
-import type {Issue, ProjectReview} from '../schemas/ReviewResult.js'
+import type {Issue, ProjectReview} from '../schemas/review-result.js'
 
 const SEVERITY_EMOJI = {
   critical: '🔴',

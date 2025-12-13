@@ -7,7 +7,7 @@ import type {ConfigError} from 'effect/ConfigError'
 import * as Effect from 'effect/Effect'
 import * as Layer from 'effect/Layer'
 import * as Option from 'effect/Option'
-import {CliConfig} from './CliConfig.js'
+import {Cli} from './cli.js'
 
 export const DEFAULT_MODEL = 'anthropic.claude-3-5-sonnet-20241022-v2:0' as const
 
@@ -39,10 +39,10 @@ const BedrockClientLive: Layer.Layer<
 export const AiLive: Layer.Layer<
   LanguageModel.LanguageModel,
   ConfigError,
-  HttpClient.HttpClient | CliConfig
+  HttpClient.HttpClient | Cli
 > = Layer.unwrapEffect(
   Effect.gen(function* () {
-    const config = yield* CliConfig
+    const config = yield* Cli
 
     return AmazonBedrockLanguageModel.layer({
       model: config.model,
@@ -55,3 +55,4 @@ export const AiLive: Layer.Layer<
     }).pipe(Layer.provide(BedrockClientLive))
   })
 )
+

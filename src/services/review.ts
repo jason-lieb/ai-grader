@@ -10,8 +10,8 @@ import {
   Issue,
   ProjectReview,
   ProjectSummaryResponse,
-} from '../schemas/ReviewResult.js'
-import type {ProjectFile} from './File.js'
+} from '../schemas/review-result.js'
+import type {ProjectFile} from './file.js'
 
 const SYSTEM_PROMPT = `You are an expert code reviewer specializing in Node.js and TypeScript applications.
 Your task is to analyze code for:
