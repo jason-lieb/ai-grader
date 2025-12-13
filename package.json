@@ -1,9 +1,9 @@
 {
-  "name": "@template/cli",
-  "version": "0.0.0",
+  "name": "ai-grader",
+  "version": "1.0.0",
   "type": "module",
   "license": "MIT",
-  "description": "A basic Effect CLI application",
+  "description": "AI-powered code review CLI using Effect and Amazon Bedrock",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jason-lieb/ai-grader.git"
@@ -12,8 +12,11 @@
     "access": "public",
     "directory": "dist"
   },
+  "bin": {
+    "ai-grader": "./dist/ai-grader"
+  },
   "scripts": {
-    "build": "bun build src/bin.ts --compile --outfile dist/bin",
+    "build": "bun build src/bin.ts --compile --outfile dist/ai-grader",
     "check": "tsc -b tsconfig.json",
     "lint": "eslint \"**/{src,test,examples,scripts,dtslint}/**/*.{ts,mjs}\"",
     "lint-fix": "bun lint --fix",
@@ -42,5 +45,9 @@
     "tsx": "^4.19.1",
     "typescript": "^5.6.2",
     "vitest": "^3.2.0"
+  },
+  "dependencies": {
+    "@effect/ai": "^0.32.1",
+    "@effect/ai-amazon-bedrock": "^0.12.1"
   }
 }
