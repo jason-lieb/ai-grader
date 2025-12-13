@@ -72,18 +72,18 @@ const IGNORE_FILES = new Set([
   'bun.lock',
 ])
 
-export interface FileScannerService {
+export interface FileService {
   readonly scanProject: (
     directory: string,
     options?: Partial<ScanOptions>
   ) => Effect.Effect<RepoSnapshot, PlatformError>
 }
 
-export class FileScanner extends Context.Tag('FileScanner')<FileScanner, FileScannerService>() {}
+export class File extends Context.Tag('File')<File, FileService>() {}
 
-export const FileScannerLive: Layer.Layer<FileScanner, never, FileSystem.FileSystem | Path.Path> =
+export const FileLive: Layer.Layer<File, never, FileSystem.FileSystem | Path.Path> =
   Layer.effect(
-    FileScanner,
+    File,
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const path = yield* Path.Path
@@ -222,3 +222,4 @@ export const getFileSummary = (files: ReadonlyArray<ProjectFile>): Record<string
 
   return summary
 }
+

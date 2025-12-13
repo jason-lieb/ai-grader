@@ -11,7 +11,7 @@ import {
   ProjectReview,
   ProjectSummaryResponse,
 } from '../schemas/ReviewResult.js'
-import type {ProjectFile} from './FileScanner.js'
+import type {ProjectFile} from './File.js'
 
 const SYSTEM_PROMPT = `You are an expert code reviewer specializing in Node.js and TypeScript applications.
 Your task is to analyze code for:
@@ -33,7 +33,7 @@ Guidelines:
 const MAX_FILE_SIZE = 15000
 const MAX_FILES_PER_BATCH = 20
 
-export interface CodeAnalyzerService {
+export interface ReviewService {
   readonly analyzeProject: (
     files: ReadonlyArray<ProjectFile>
   ) => Effect.Effect<ProjectReview, AiError.AiError>
@@ -44,14 +44,11 @@ export interface CodeAnalyzerService {
   ) => Effect.Effect<FileReview, AiError.AiError>
 }
 
-export class CodeAnalyzer extends Context.Tag('CodeAnalyzer')<
-  CodeAnalyzer,
-  CodeAnalyzerService
->() {}
+export class Review extends Context.Tag('Review')<Review, ReviewService>() {}
 
-export const CodeAnalyzerLive: Layer.Layer<CodeAnalyzer, never, LanguageModel.LanguageModel> =
+export const ReviewLive: Layer.Layer<Review, never, LanguageModel.LanguageModel> =
   Layer.effect(
-    CodeAnalyzer,
+    Review,
     Effect.gen(function* () {
       const model = yield* LanguageModel.LanguageModel
 
@@ -202,3 +199,4 @@ Provide a comprehensive project review including:
 
 Be honest but constructive in your assessment.`
 }
+

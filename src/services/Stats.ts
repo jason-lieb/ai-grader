@@ -32,14 +32,11 @@ export interface RepoInfo {
   readonly devDependencies: ReadonlyArray<string>
 }
 
-export interface RepoDetectorService {
+export interface StatsService {
   readonly detectRepo: (directory: string) => Effect.Effect<RepoInfo, PlatformError>
 }
 
-export class RepoDetector extends Context.Tag('RepoDetector')<
-  RepoDetector,
-  RepoDetectorService
->() {}
+export class Stats extends Context.Tag('Stats')<Stats, StatsService>() {}
 
 const LOCKFILE_TO_MANAGER: Record<string, PackageManager> = {
   'package-lock.json': 'npm',
@@ -62,9 +59,9 @@ const FRAMEWORK_PACKAGES: Record<string, Framework> = {
   effect: 'effect',
 }
 
-export const RepoDetectorLive: Layer.Layer<RepoDetector, never, FileSystem.FileSystem | Path.Path> =
+export const StatsLive: Layer.Layer<Stats, never, FileSystem.FileSystem | Path.Path> =
   Layer.effect(
-    RepoDetector,
+    Stats,
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const path = yield* Path.Path
@@ -209,3 +206,4 @@ export const formatRepoInfo = (info: RepoInfo): string => {
 
   return lines.join('\n')
 }
+

@@ -32,17 +32,14 @@ const COLORS = {
   white: '\x1b[37m',
 } as const
 
-export interface ReportGeneratorService {
+export interface ReportService {
   readonly generateConsoleReport: (review: ProjectReview) => Effect.Effect<void>
   readonly generateMarkdownReport: (review: ProjectReview) => Effect.Effect<string>
 }
 
-export class ReportGenerator extends Context.Tag('ReportGenerator')<
-  ReportGenerator,
-  ReportGeneratorService
->() {}
+export class Report extends Context.Tag('Report')<Report, ReportService>() {}
 
-export const ReportGeneratorLive: Layer.Layer<ReportGenerator> = Layer.succeed(ReportGenerator, {
+export const ReportLive: Layer.Layer<Report> = Layer.succeed(Report, {
   generateConsoleReport: (review: ProjectReview) =>
     Effect.gen(function* () {
       const lines: string[] = []
@@ -288,3 +285,4 @@ const formatIssueForMarkdown = (issue: Issue): string => {
 
   return lines.join('\n')
 }
+

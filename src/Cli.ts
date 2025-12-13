@@ -8,21 +8,16 @@ import * as Layer from 'effect/Layer'
 import * as Option from 'effect/Option'
 import {AiLive, DEFAULT_MODEL} from './config/Bedrock.js'
 import {CliConfig} from './config/CliConfig.js'
-import {CodeAnalyzer, CodeAnalyzerLive} from './services/CodeAnalyzer.js'
-import {
-  FileScanner,
-  FileScannerLive,
-  getFileSummary,
-  defaultScanOptions,
-} from './services/FileScanner.js'
-import {RepoDetector, RepoDetectorLive, formatRepoInfo} from './services/RepoDetector.js'
-import {ReportGenerator, ReportGeneratorLive} from './services/ReportGenerator.js'
+import {Review, ReviewLive} from './services/Review.js'
+import {File, FileLive, getFileSummary, defaultScanOptions} from './services/File.js'
+import {Stats, StatsLive, formatRepoInfo} from './services/Stats.js'
+import {Report, ReportLive} from './services/Report.js'
 
 const ServicesLive = Layer.mergeAll(
-  FileScannerLive,
-  RepoDetectorLive,
-  ReportGeneratorLive,
-  CodeAnalyzerLive.pipe(Layer.provide(AiLive))
+  FileLive,
+  StatsLive,
+  ReportLive,
+  ReviewLive.pipe(Layer.provide(AiLive))
 )
 
 const makeAppLayer = (model: string) =>
@@ -64,7 +59,7 @@ const ignoreOption = Options.text('ignore').pipe(
 )
 
 const noAiOption = Options.boolean('no-ai').pipe(
-  Options.withDefault(false),
+  Options.withDefault(true),
   Options.withDescription('Skip AI analysis, only show repo detection')
 )
 
@@ -91,21 +86,21 @@ const gradeCommand = Command.make(
   },
   opts =>
     Effect.gen(function* () {
-      const fileScanner = yield* FileScanner
-      const repoDetector = yield* RepoDetector
-      const codeAnalyzer = yield* CodeAnalyzer
-      const reportGenerator = yield* ReportGenerator
+      const file = yield* File
+      const stats = yield* Stats
+      const review = yield* Review
+      const report = yield* Report
       const fs = yield* FileSystem.FileSystem
 
       yield* Console.log(`\n🔍 Scanning project: ${opts.directory}`)
 
-      const repoInfo = yield* repoDetector.detectRepo(opts.directory)
+      const repoInfo = yield* stats.detectRepo(opts.directory)
 
       yield* Console.log('')
       yield* Console.log(formatRepoInfo(repoInfo))
       yield* Console.log('')
 
-      const snapshot = yield* fileScanner.scanProject(opts.directory, {
+      const snapshot = yield* file.scanProject(opts.directory, {
         concurrency: opts.concurrency,
         ignorePatterns: opts.ignore,
       })
@@ -134,8 +129,8 @@ const gradeCommand = Command.make(
       yield* Console.log('')
 
       yield* Console.log('Files to analyze:')
-      for (const file of snapshot.files.slice(0, 20)) {
-        yield* Console.log(`  - ${file.relativePath}`)
+      for (const f of snapshot.files.slice(0, 20)) {
+        yield* Console.log(`  - ${f.relativePath}`)
       }
       if (snapshot.files.length > 20) {
         yield* Console.log(`  ... and ${snapshot.files.length - 20} more`)
@@ -148,20 +143,20 @@ const gradeCommand = Command.make(
       }
 
       yield* Console.log(`🤖 Analyzing code with AI (model: ${opts.model})...`)
-      const review = yield* codeAnalyzer.analyzeProject(snapshot.files)
+      const result = yield* review.analyzeProject(snapshot.files)
 
       let output: string
 
       if (opts.format === 'markdown') {
-        output = yield* reportGenerator.generateMarkdownReport(review)
+        output = yield* report.generateMarkdownReport(result)
       } else {
-        yield* reportGenerator.generateConsoleReport(review)
+        yield* report.generateConsoleReport(result)
         output = ''
       }
 
       if (Option.isSome(opts.out)) {
         const content =
-          opts.format === 'console' ? yield* reportGenerator.generateMarkdownReport(review) : output
+          opts.format === 'console' ? yield* report.generateMarkdownReport(result) : output
         yield* fs.writeFileString(opts.out.value, content)
         yield* Console.log(`📄 Report written to ${opts.out.value}`)
       } else if (output) {
