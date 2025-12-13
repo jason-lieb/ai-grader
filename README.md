@@ -4,10 +4,6 @@ This template provides a solid foundation for building scalable and maintainable
 
 ## Running Code
 
-This template leverages [tsx](https://tsx.is) to allow execution of TypeScript files via NodeJS as if they were written in plain JavaScript.
-
-To execute a file with `tsx`:
-
 ```sh
 bun ./path/to/the/file.ts
 ```
