@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: bun build
+      - run: bun run build
 
   types:
     name: Types
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: bun check
+      - run: bun run check
 
   lint:
     name: Lint
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: bun lint
+      - run: bun run lint
 
   test:
     name: Test
@@ -52,4 +52,4 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: bun test
+      - run: bun run test
