@@ -5,7 +5,7 @@ import * as NodePath from '@effect/platform-node/NodePath'
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as Effect from 'effect/Effect'
 import * as Layer from 'effect/Layer'
-import {cli} from './Cli.js'
+import {cli} from './cli.js'
 
 const PlatformLive = Layer.mergeAll(
   NodeContext.layer,
@@ -14,7 +14,4 @@ const PlatformLive = Layer.mergeAll(
   HttpClient.layerUndici
 )
 
-cli(process.argv).pipe(
-  Effect.provide(PlatformLive),
-  NodeRuntime.runMain({disableErrorReporting: false})
-)
+cli(process.argv).pipe(Effect.provide(PlatformLive), NodeRuntime.runMain())
