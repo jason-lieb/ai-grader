@@ -8,10 +8,10 @@ import * as Layer from 'effect/Layer'
 import * as Option from 'effect/Option'
 import {AiLive, DEFAULT_MODEL} from './config/bedrock.js'
 import {Cli} from './config/cli.js'
-import {Review, ReviewLive} from './services/review.js'
-import {File, FileLive, getFileSummary, defaultScanOptions} from './services/file.js'
-import {Stats, StatsLive, formatRepoInfo} from './services/stats.js'
+import {defaultScanOptions, File, FileLive, getFileSummary} from './services/file.js'
 import {Report, ReportLive} from './services/report.js'
+import {Review, ReviewLive} from './services/review.js'
+import {formatRepoInfo, Stats, StatsLive} from './services/stats.js'
 
 const ServicesLive = Layer.mergeAll(
   FileLive,

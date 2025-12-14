@@ -42,7 +42,7 @@ export class Report extends Context.Tag('Report')<Report, ReportService>() {}
 export const ReportLive: Layer.Layer<Report> = Layer.succeed(Report, {
   generateConsoleReport: (review: ProjectReview) =>
     Effect.gen(function* () {
-      const lines: string[] = []
+      const lines: Array<string> = []
 
       lines.push('')
       lines.push(`${COLORS.bold}${'═'.repeat(60)}${COLORS.reset}`)
@@ -174,7 +174,7 @@ const calculateStats = (
 const generateMarkdown = (review: ProjectReview): string => {
   const stats = calculateStats(review)
 
-  const sections: string[] = []
+  const sections: Array<string> = []
 
   sections.push('# 📊 AI Grader Code Review Report')
   sections.push('')
@@ -285,4 +285,3 @@ const formatIssueForMarkdown = (issue: Issue): string => {
 
   return lines.join('\n')
 }
-

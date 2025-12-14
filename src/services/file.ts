@@ -81,132 +81,131 @@ export interface FileService {
 
 export class File extends Context.Tag('File')<File, FileService>() {}
 
-export const FileLive: Layer.Layer<File, never, FileSystem.FileSystem | Path.Path> =
-  Layer.effect(
-    File,
-    Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
+export const FileLive: Layer.Layer<File, never, FileSystem.FileSystem | Path.Path> = Layer.effect(
+  File,
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
 
-      const scanProject = (
-        directory: string,
-        opts?: Partial<ScanOptions>
-      ): Effect.Effect<RepoSnapshot, PlatformError> =>
-        Effect.gen(function* () {
-          const options = {...defaultScanOptions, ...opts}
-          const rootDir = path.resolve(directory)
+    const scanProject = (
+      directory: string,
+      opts?: Partial<ScanOptions>
+    ): Effect.Effect<RepoSnapshot, PlatformError> =>
+      Effect.gen(function* () {
+        const options = {...defaultScanOptions, ...opts}
+        const rootDir = path.resolve(directory)
 
-          const allFilePaths: Array<{
-            fullPath: string
-            relativePath: string
-            extension: string
-          }> = []
-          const skippedReasons: Record<string, number> = {}
+        const allFilePaths: Array<{
+          fullPath: string
+          relativePath: string
+          extension: string
+        }> = []
+        const skippedReasons: Record<string, number> = {}
 
-          const addSkipped = (reason: string) => {
-            skippedReasons[reason] = (skippedReasons[reason] || 0) + 1
+        const addSkipped = (reason: string) => {
+          skippedReasons[reason] = (skippedReasons[reason] || 0) + 1
+        }
+
+        const matchesIgnorePattern = (relativePath: string): boolean => {
+          for (const pattern of options.ignorePatterns) {
+            if (relativePath.includes(pattern)) {
+              return true
+            }
           }
+          return false
+        }
 
-          const matchesIgnorePattern = (relativePath: string): boolean => {
-            for (const pattern of options.ignorePatterns) {
-              if (relativePath.includes(pattern)) {
-                return true
+        const collectFiles = (dir: string): Effect.Effect<void, PlatformError> =>
+          Effect.gen(function* () {
+            const entries = yield* fs.readDirectory(dir)
+
+            for (const entry of entries) {
+              const fullPath = path.join(dir, entry)
+              const stat = yield* fs.stat(fullPath)
+
+              if (stat.type === 'Directory') {
+                if (!IGNORE_DIRS.has(entry)) {
+                  yield* collectFiles(fullPath)
+                }
+              } else if (stat.type === 'File') {
+                const relativePath = path.relative(rootDir, fullPath)
+
+                if (IGNORE_FILES.has(entry)) {
+                  addSkipped('ignored-file')
+                  continue
+                }
+
+                if (matchesIgnorePattern(relativePath)) {
+                  addSkipped('ignore-pattern')
+                  continue
+                }
+
+                const ext = path.extname(entry)
+
+                if (!CODE_EXTENSIONS.has(ext)) {
+                  addSkipped('non-code-extension')
+                  continue
+                }
+
+                allFilePaths.push({fullPath, relativePath, extension: ext})
               }
             }
-            return false
-          }
-
-          const collectFiles = (dir: string): Effect.Effect<void, PlatformError> =>
-            Effect.gen(function* () {
-              const entries = yield* fs.readDirectory(dir)
-
-              for (const entry of entries) {
-                const fullPath = path.join(dir, entry)
-                const stat = yield* fs.stat(fullPath)
-
-                if (stat.type === 'Directory') {
-                  if (!IGNORE_DIRS.has(entry)) {
-                    yield* collectFiles(fullPath)
-                  }
-                } else if (stat.type === 'File') {
-                  const relativePath = path.relative(rootDir, fullPath)
-
-                  if (IGNORE_FILES.has(entry)) {
-                    addSkipped('ignored-file')
-                    continue
-                  }
-
-                  if (matchesIgnorePattern(relativePath)) {
-                    addSkipped('ignore-pattern')
-                    continue
-                  }
-
-                  const ext = path.extname(entry)
-
-                  if (!CODE_EXTENSIONS.has(ext)) {
-                    addSkipped('non-code-extension')
-                    continue
-                  }
-
-                  allFilePaths.push({fullPath, relativePath, extension: ext})
-                }
-              }
-            })
-
-          yield* collectFiles(rootDir)
-
-          const totalFiles = allFilePaths.length
-
-          const limitedPaths = allFilePaths.slice(0, options.maxFiles)
-          if (allFilePaths.length > options.maxFiles) {
-            addSkipped('max-files-limit')
-            skippedReasons['max-files-limit'] = allFilePaths.length - options.maxFiles
-          }
-
-          const readFileWithLimit = (fileInfo: {
-            fullPath: string
-            relativePath: string
-            extension: string
-          }): Effect.Effect<ProjectFile | null, PlatformError> =>
-            Effect.gen(function* () {
-              const stat = yield* fs.stat(fileInfo.fullPath)
-              const sizeBytes = Number(stat.size)
-
-              if (sizeBytes > options.maxFileBytes) {
-                addSkipped('file-too-large')
-                return null
-              }
-
-              const content = yield* fs.readFileString(fileInfo.fullPath)
-
-              return {
-                path: fileInfo.fullPath,
-                relativePath: fileInfo.relativePath,
-                content,
-                extension: fileInfo.extension,
-                sizeBytes,
-              }
-            })
-
-          const results = yield* Effect.all(limitedPaths.map(readFileWithLimit), {
-            concurrency: options.concurrency,
           })
 
-          const files = results.filter((f): f is ProjectFile => f !== null)
+        yield* collectFiles(rootDir)
 
-          const skippedFiles = totalFiles - files.length
+        const totalFiles = allFilePaths.length
 
-          return {
-            files,
-            totalFiles,
-            skippedFiles,
-            skippedReasons,
-          }
+        const limitedPaths = allFilePaths.slice(0, options.maxFiles)
+        if (allFilePaths.length > options.maxFiles) {
+          addSkipped('max-files-limit')
+          skippedReasons['max-files-limit'] = allFilePaths.length - options.maxFiles
+        }
+
+        const readFileWithLimit = (fileInfo: {
+          fullPath: string
+          relativePath: string
+          extension: string
+        }): Effect.Effect<ProjectFile | null, PlatformError> =>
+          Effect.gen(function* () {
+            const stat = yield* fs.stat(fileInfo.fullPath)
+            const sizeBytes = Number(stat.size)
+
+            if (sizeBytes > options.maxFileBytes) {
+              addSkipped('file-too-large')
+              return null
+            }
+
+            const content = yield* fs.readFileString(fileInfo.fullPath)
+
+            return {
+              path: fileInfo.fullPath,
+              relativePath: fileInfo.relativePath,
+              content,
+              extension: fileInfo.extension,
+              sizeBytes,
+            }
+          })
+
+        const results = yield* Effect.all(limitedPaths.map(readFileWithLimit), {
+          concurrency: options.concurrency,
         })
 
-      return {scanProject}
-    })
-  )
+        const files = results.filter((f): f is ProjectFile => f !== null)
+
+        const skippedFiles = totalFiles - files.length
+
+        return {
+          files,
+          totalFiles,
+          skippedFiles,
+          skippedReasons,
+        }
+      })
+
+    return {scanProject}
+  })
+)
 
 export const isCodeFile = (extension: string): boolean => CODE_EXTENSIONS.has(extension)
 
@@ -222,4 +221,3 @@ export const getFileSummary = (files: ReadonlyArray<ProjectFile>): Record<string
 
   return summary
 }
-

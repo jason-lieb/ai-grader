@@ -76,4 +76,3 @@ export class ProjectSummaryResponse extends Schema.Class<ProjectSummaryResponse>
   ),
   recommendations: Schema.Array(Schema.String),
 }) {}
-

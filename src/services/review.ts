@@ -1,4 +1,4 @@
-import * as AiError from '@effect/ai/AiError'
+import type * as AiError from '@effect/ai/AiError'
 import * as LanguageModel from '@effect/ai/LanguageModel'
 import * as Context from 'effect/Context'
 import * as Effect from 'effect/Effect'
@@ -46,20 +46,19 @@ export interface ReviewService {
 
 export class Review extends Context.Tag('Review')<Review, ReviewService>() {}
 
-export const ReviewLive: Layer.Layer<Review, never, LanguageModel.LanguageModel> =
-  Layer.effect(
-    Review,
-    Effect.gen(function* () {
-      const model = yield* LanguageModel.LanguageModel
+export const ReviewLive: Layer.Layer<Review, never, LanguageModel.LanguageModel> = Layer.effect(
+  Review,
+  Effect.gen(function* () {
+    const model = yield* LanguageModel.LanguageModel
 
-      const analyzeFile = (
-        file: ProjectFile,
-        projectContext?: string
-      ): Effect.Effect<FileReview, AiError.AiError> =>
-        Effect.gen(function* () {
-          const contextSection = projectContext ? `\n\nProject Context:\n${projectContext}` : ''
+    const analyzeFile = (
+      file: ProjectFile,
+      projectContext?: string
+    ): Effect.Effect<FileReview, AiError.AiError> =>
+      Effect.gen(function* () {
+        const contextSection = projectContext ? `\n\nProject Context:\n${projectContext}` : ''
 
-          const userPrompt = `Review the following file: ${file.relativePath}${contextSection}
+        const userPrompt = `Review the following file: ${file.relativePath}${contextSection}
 
 \`\`\`${file.extension.slice(1)}
 ${file.content}
@@ -67,99 +66,99 @@ ${file.content}
 
 Analyze this code and provide a structured review. Focus on the most important issues and be specific with your recommendations.`
 
-          const response = yield* model.generateObject({
-            prompt: [
-              {role: 'system', content: SYSTEM_PROMPT},
-              {role: 'user', content: userPrompt},
-            ],
-            schema: FileReviewResponse,
-            objectName: 'FileReview',
-          })
-
-          return new FileReview({
-            file: file.relativePath,
-            summary: response.value.summary,
-            issues: response.value.issues.map(
-              issue =>
-                new Issue({
-                  severity: issue.severity,
-                  category: issue.category,
-                  file: file.relativePath,
-                  line: Option.fromNullable(issue.line),
-                  description: issue.description,
-                  recommendation: issue.recommendation,
-                  codeSnippet: Option.fromNullable(issue.codeSnippet),
-                })
-            ),
-            positives: response.value.positives,
-          })
+        const response = yield* model.generateObject({
+          prompt: [
+            {role: 'system', content: SYSTEM_PROMPT},
+            {role: 'user', content: userPrompt},
+          ],
+          schema: FileReviewResponse,
+          objectName: 'FileReview',
         })
 
-      const analyzeProject = (
-        files: ReadonlyArray<ProjectFile>
-      ): Effect.Effect<ProjectReview, AiError.AiError> =>
-        Effect.gen(function* () {
-          const filesToAnalyze = files
-            .filter(file => file.content.length <= MAX_FILE_SIZE)
-            .slice(0, MAX_FILES_PER_BATCH)
+        return new FileReview({
+          file: file.relativePath,
+          summary: response.value.summary,
+          issues: response.value.issues.map(
+            issue =>
+              new Issue({
+                severity: issue.severity,
+                category: issue.category,
+                file: file.relativePath,
+                line: Option.fromNullable(issue.line),
+                description: issue.description,
+                recommendation: issue.recommendation,
+                codeSnippet: Option.fromNullable(issue.codeSnippet),
+              })
+          ),
+          positives: response.value.positives,
+        })
+      })
 
-          const skippedCount = files.length - filesToAnalyze.length
-          if (skippedCount > 0) {
-            yield* Effect.logWarning(
-              `Skipping ${skippedCount} files (too large or exceeds batch limit)`
-            )
-          }
+    const analyzeProject = (
+      files: ReadonlyArray<ProjectFile>
+    ): Effect.Effect<ProjectReview, AiError.AiError> =>
+      Effect.gen(function* () {
+        const filesToAnalyze = files
+          .filter(file => file.content.length <= MAX_FILE_SIZE)
+          .slice(0, MAX_FILES_PER_BATCH)
 
-          const packageJson = files.find(f => f.relativePath === 'package.json')
-          const projectContext = packageJson
-            ? `This is a Node.js project. Here's the package.json:\n${packageJson.content.slice(0, 2000)}`
-            : undefined
+        const skippedCount = files.length - filesToAnalyze.length
+        if (skippedCount > 0) {
+          yield* Effect.logWarning(
+            `Skipping ${skippedCount} files (too large or exceeds batch limit)`
+          )
+        }
 
-          yield* Effect.logInfo(`Analyzing ${filesToAnalyze.length} files...`)
+        const packageJson = files.find(f => f.relativePath === 'package.json')
+        const projectContext = packageJson
+          ? `This is a Node.js project. Here's the package.json:\n${packageJson.content.slice(0, 2000)}`
+          : undefined
 
-          const fileReviews: FileReview[] = []
-          for (const file of filesToAnalyze) {
-            yield* Effect.logDebug(`Analyzing: ${file.relativePath}`)
-            const review = yield* analyzeFile(file, projectContext)
-            fileReviews.push(review)
-          }
+        yield* Effect.logInfo(`Analyzing ${filesToAnalyze.length} files...`)
 
-          yield* Effect.logInfo('Generating project summary...')
+        const fileReviews: Array<FileReview> = []
+        for (const file of filesToAnalyze) {
+          yield* Effect.logDebug(`Analyzing: ${file.relativePath}`)
+          const review = yield* analyzeFile(file, projectContext)
+          fileReviews.push(review)
+        }
 
-          const summaryPrompt = buildSummaryPrompt(fileReviews)
+        yield* Effect.logInfo('Generating project summary...')
 
-          const summaryResponse = yield* model.generateObject({
-            prompt: [
-              {role: 'system', content: SYSTEM_PROMPT},
-              {role: 'user', content: summaryPrompt},
-            ],
-            schema: ProjectSummaryResponse,
-            objectName: 'ProjectSummary',
-          })
+        const summaryPrompt = buildSummaryPrompt(fileReviews)
 
-          return new ProjectReview({
-            overallScore: summaryResponse.value.overallScore,
-            summary: summaryResponse.value.summary,
-            fileReviews,
-            topIssues: summaryResponse.value.topIssues.map(
-              issue =>
-                new Issue({
-                  severity: issue.severity,
-                  category: issue.category,
-                  file: issue.file,
-                  line: Option.none(),
-                  description: issue.description,
-                  recommendation: issue.recommendation,
-                  codeSnippet: Option.none(),
-                })
-            ),
-            recommendations: summaryResponse.value.recommendations,
-          })
+        const summaryResponse = yield* model.generateObject({
+          prompt: [
+            {role: 'system', content: SYSTEM_PROMPT},
+            {role: 'user', content: summaryPrompt},
+          ],
+          schema: ProjectSummaryResponse,
+          objectName: 'ProjectSummary',
         })
 
-      return {analyzeFile, analyzeProject}
-    })
-  )
+        return new ProjectReview({
+          overallScore: summaryResponse.value.overallScore,
+          summary: summaryResponse.value.summary,
+          fileReviews,
+          topIssues: summaryResponse.value.topIssues.map(
+            issue =>
+              new Issue({
+                severity: issue.severity,
+                category: issue.category,
+                file: issue.file,
+                line: Option.none(),
+                description: issue.description,
+                recommendation: issue.recommendation,
+                codeSnippet: Option.none(),
+              })
+          ),
+          recommendations: summaryResponse.value.recommendations,
+        })
+      })
+
+    return {analyzeFile, analyzeProject}
+  })
+)
 
 const buildSummaryPrompt = (fileReviews: ReadonlyArray<FileReview>): string => {
   const reviewSummaries = fileReviews
@@ -199,4 +198,3 @@ Provide a comprehensive project review including:
 
 Be honest but constructive in your assessment.`
 }
-

@@ -1,6 +1,6 @@
 import * as AmazonBedrockClient from '@effect/ai-amazon-bedrock/AmazonBedrockClient'
 import * as AmazonBedrockLanguageModel from '@effect/ai-amazon-bedrock/AmazonBedrockLanguageModel'
-import * as LanguageModel from '@effect/ai/LanguageModel'
+import type * as LanguageModel from '@effect/ai/LanguageModel'
 import type * as HttpClient from '@effect/platform/HttpClient'
 import * as Config from 'effect/Config'
 import type {ConfigError} from 'effect/ConfigError'
@@ -55,4 +55,3 @@ export const AiLive: Layer.Layer<
     }).pipe(Layer.provide(BedrockClientLive))
   })
 )
-

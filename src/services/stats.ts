@@ -59,43 +59,42 @@ const FRAMEWORK_PACKAGES: Record<string, Framework> = {
   effect: 'effect',
 }
 
-export const StatsLive: Layer.Layer<Stats, never, FileSystem.FileSystem | Path.Path> =
-  Layer.effect(
-    Stats,
-    Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* Path.Path
+export const StatsLive: Layer.Layer<Stats, never, FileSystem.FileSystem | Path.Path> = Layer.effect(
+  Stats,
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
 
-      const detectRepo = (directory: string): Effect.Effect<RepoInfo, PlatformError> =>
-        Effect.gen(function* () {
-          const rootDir = path.resolve(directory)
+    const detectRepo = (directory: string): Effect.Effect<RepoInfo, PlatformError> =>
+      Effect.gen(function* () {
+        const rootDir = path.resolve(directory)
 
-          const packageManager = yield* detectPackageManager(fs, rootDir)
-          const packageJson = yield* readPackageJson(fs, path, rootDir)
-          const hasTypeScript = yield* detectTypeScript(fs, rootDir, packageJson)
+        const packageManager = yield* detectPackageManager(fs, rootDir)
+        const packageJson = yield* readPackageJson(fs, path, rootDir)
+        const hasTypeScript = yield* detectTypeScript(fs, rootDir, packageJson)
 
-          const allDeps = [
-            ...Object.keys(packageJson.dependencies ?? {}),
-            ...Object.keys(packageJson.devDependencies ?? {}),
-          ]
-          const frameworks = detectFrameworks(allDeps)
+        const allDeps = [
+          ...Object.keys(packageJson.dependencies ?? {}),
+          ...Object.keys(packageJson.devDependencies ?? {}),
+        ]
+        const frameworks = detectFrameworks(allDeps)
 
-          return {
-            name: Option.fromNullable(packageJson.name),
-            version: Option.fromNullable(packageJson.version),
-            description: Option.fromNullable(packageJson.description),
-            packageManager,
-            hasTypeScript,
-            frameworks,
-            scripts: packageJson.scripts ?? {},
-            dependencies: Object.keys(packageJson.dependencies ?? {}),
-            devDependencies: Object.keys(packageJson.devDependencies ?? {}),
-          }
-        })
+        return {
+          name: Option.fromNullable(packageJson.name),
+          version: Option.fromNullable(packageJson.version),
+          description: Option.fromNullable(packageJson.description),
+          packageManager,
+          hasTypeScript,
+          frameworks,
+          scripts: packageJson.scripts ?? {},
+          dependencies: Object.keys(packageJson.dependencies ?? {}),
+          devDependencies: Object.keys(packageJson.devDependencies ?? {}),
+        }
+      })
 
-      return {detectRepo}
-    })
-  )
+    return {detectRepo}
+  })
+)
 
 const detectPackageManager = (
   fs: FileSystem.FileSystem,
@@ -159,8 +158,8 @@ const detectTypeScript = (
     return false
   })
 
-const detectFrameworks = (dependencies: string[]): Framework[] => {
-  const frameworks: Framework[] = []
+const detectFrameworks = (dependencies: Array<string>): Array<Framework> => {
+  const frameworks: Array<Framework> = []
 
   for (const dep of dependencies) {
     const framework = FRAMEWORK_PACKAGES[dep]
@@ -173,7 +172,7 @@ const detectFrameworks = (dependencies: string[]): Framework[] => {
 }
 
 export const formatRepoInfo = (info: RepoInfo): string => {
-  const lines: string[] = []
+  const lines: Array<string> = []
 
   const name = Option.getOrElse(info.name, () => 'Unknown')
   const version = Option.map(info.version, v => `v${v}`)
@@ -206,4 +205,3 @@ export const formatRepoInfo = (info: RepoInfo): string => {
 
   return lines.join('\n')
 }
-
