@@ -1,32 +1,33 @@
 import * as Args from '@effect/cli/Args'
 import * as Command from '@effect/cli/Command'
 import * as Options from '@effect/cli/Options'
-import * as FileSystem from '@effect/platform/FileSystem'
+// import * as FileSystem from '@effect/platform/FileSystem'
+import * as Path from '@effect/platform/Path'
 import * as Console from 'effect/Console'
 import * as Effect from 'effect/Effect'
 import * as Layer from 'effect/Layer'
 import * as Option from 'effect/Option'
-import {AiLive, DEFAULT_MODEL} from './config/bedrock.js'
-import {Cli} from './config/cli.js'
+// import {AiLive, DEFAULT_MODEL} from './config/bedrock.js'
+// import {Cli} from './config/cli.js'
 import {defaultScanOptions, File, FileLive, getFileSummary} from './services/file.js'
-import {Report, ReportLive} from './services/report.js'
-import {Review, ReviewLive} from './services/review.js'
+// import {Report, ReportLive} from './services/report.js'
+// import {Review, ReviewLive} from './services/review.js'
 import {formatRepoInfo, Stats, StatsLive} from './services/stats.js'
 
 const ServicesLive = Layer.mergeAll(
   FileLive,
-  StatsLive,
-  ReportLive,
-  ReviewLive.pipe(Layer.provide(AiLive))
+  StatsLive
+  // ReportLive,
+  // ReviewLive.pipe(Layer.provide(AiLive))
 )
 
-const makeAppLayer = (model: string) =>
-  ServicesLive.pipe(Layer.provide(Layer.succeed(Cli, {model})))
+// const makeAppLayer = (model: string) =>
+//   ServicesLive.pipe(Layer.provide(Layer.succeed(Cli, {model})))
 
 const directoryArg = Args.directory({
   name: 'directory',
   exists: 'yes',
-}).pipe(Args.withDescription('The directory to review'))
+}).pipe(Args.withDefault('.'), Args.withDescription('The directory to review'))
 
 const formatOption = Options.choice('format', ['console', 'markdown']).pipe(
   Options.withAlias('f'),
@@ -40,11 +41,11 @@ const outOption = Options.file('out').pipe(
   Options.withDescription('Write report to file instead of stdout')
 )
 
-const modelOption = Options.text('model').pipe(
-  Options.withAlias('m'),
-  Options.withDefault(DEFAULT_MODEL),
-  Options.withDescription('Bedrock model ID to use')
-)
+// const modelOption = Options.text('model').pipe(
+//   Options.withAlias('m'),
+//   Options.withDefault(DEFAULT_MODEL),
+//   Options.withDescription('Bedrock model ID to use')
+// )
 
 const concurrencyOption = Options.integer('concurrency').pipe(
   Options.withAlias('c'),
@@ -79,7 +80,7 @@ const gradeCommand = Command.make(
     directory: directoryArg,
     format: formatOption,
     out: outOption,
-    model: modelOption,
+    // model: modelOption,
     concurrency: concurrencyOption,
     ignore: ignoreOption,
     noAi: noAiOption,
@@ -88,11 +89,13 @@ const gradeCommand = Command.make(
     Effect.gen(function* () {
       const file = yield* File
       const stats = yield* Stats
-      const review = yield* Review
-      const report = yield* Report
-      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
+      // const review = yield* Review
+      // const report = yield* Report
+      // const fs = yield* FileSystem.FileSystem
 
-      yield* Console.log(`\n🔍 Scanning project: ${opts.directory}`)
+      const absolutePath = path.resolve(opts.directory)
+      yield* Console.log(`\nRunning AI Grader on: ${absolutePath}`)
 
       const repoInfo = yield* stats.detectRepo(opts.directory)
 
@@ -106,65 +109,61 @@ const gradeCommand = Command.make(
       })
 
       if (snapshot.files.length === 0) {
-        yield* Console.log('❌ No code files found in the specified directory.')
+        yield* Console.log('No code files found in the specified directory.')
         return
       }
 
-      yield* Console.log(
-        `📁 Found ${snapshot.totalFiles} files, analyzing ${snapshot.files.length}`
-      )
-
       if (snapshot.skippedFiles > 0) {
-        yield* Console.log(`⏭️  Skipped ${snapshot.skippedFiles} files`)
+        yield* Console.log(`Skipped ${snapshot.skippedFiles} files`)
         for (const [reason, count] of Object.entries(snapshot.skippedReasons)) {
-          yield* Console.log(`   - ${reason}: ${count}`)
+          yield* Console.log(`  - ${reason}: ${count}`)
         }
       }
 
       const summary = getFileSummary(snapshot.files)
-      yield* Console.log('\nFile breakdown:')
+      yield* Console.log('File breakdown:')
       for (const [ext, count] of Object.entries(summary)) {
         yield* Console.log(`  ${ext}: ${count} files`)
       }
       yield* Console.log('')
 
       yield* Console.log('Files to analyze:')
-      for (const f of snapshot.files.slice(0, 20)) {
+      for (const f of snapshot.files) {
         yield* Console.log(`  - ${f.relativePath}`)
-      }
-      if (snapshot.files.length > 20) {
-        yield* Console.log(`  ... and ${snapshot.files.length - 20} more`)
       }
       yield* Console.log('')
 
-      if (opts.noAi) {
-        yield* Console.log('✅ Repo detection complete (AI analysis skipped)')
-        return
-      }
+      // AI analysis disabled for testing
+      yield* Console.log('Repo detection complete (AI analysis disabled)')
 
-      yield* Console.log(`🤖 Analyzing code with AI (model: ${opts.model})...`)
-      const result = yield* review.analyzeProject(snapshot.files)
+      // if (opts.noAi) {
+      //   yield* Console.log('✅ Repo detection complete (AI analysis skipped)')
+      //   return
+      // }
 
-      let output: string
+      // yield* Console.log(`🤖 Analyzing code with AI (model: ${opts.model})...`)
+      // const result = yield* review.analyzeProject(snapshot.files)
 
-      if (opts.format === 'markdown') {
-        output = yield* report.generateMarkdownReport(result)
-      } else {
-        yield* report.generateConsoleReport(result)
-        output = ''
-      }
+      // let output: string
 
-      if (Option.isSome(opts.out)) {
-        const content =
-          opts.format === 'console' ? yield* report.generateMarkdownReport(result) : output
-        yield* fs.writeFileString(opts.out.value, content)
-        yield* Console.log(`📄 Report written to ${opts.out.value}`)
-      } else if (output) {
-        yield* Console.log(output)
-      }
+      // if (opts.format === 'markdown') {
+      //   output = yield* report.generateMarkdownReport(result)
+      // } else {
+      //   yield* report.generateConsoleReport(result)
+      //   output = ''
+      // }
 
-      yield* Console.log('✅ Analysis complete!')
-    }).pipe(Effect.provide(makeAppLayer(opts.model)))
+      // if (Option.isSome(opts.out)) {
+      //   const content =
+      //     opts.format === 'console' ? yield* report.generateMarkdownReport(result) : output
+      //   yield* fs.writeFileString(opts.out.value, content)
+      //   yield* Console.log(`📄 Report written to ${opts.out.value}`)
+      // } else if (output) {
+      //   yield* Console.log(output)
+      // }
+
+      // yield* Console.log('✅ Analysis complete!')
+    }).pipe(Effect.provide(ServicesLive))
 )
 
 export const cli = Command.run(gradeCommand, {

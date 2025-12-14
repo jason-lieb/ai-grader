@@ -176,32 +176,30 @@ export const formatRepoInfo = (info: RepoInfo): string => {
 
   const name = Option.getOrElse(info.name, () => 'Unknown')
   const version = Option.map(info.version, v => `v${v}`)
-  lines.push(`📦 ${name}${Option.isSome(version) ? ` (${version.value})` : ''}`)
+  lines.push(`${name}${Option.isSome(version) ? ` (${version.value})` : ''}`)
 
   if (Option.isSome(info.description)) {
-    lines.push(`   ${info.description.value}`)
+    lines.push(info.description.value)
   }
 
   lines.push('')
 
   if (Option.isSome(info.packageManager)) {
-    lines.push(`📋 Package Manager: ${info.packageManager.value}`)
+    lines.push(`Package Manager: ${info.packageManager.value}`)
   }
 
-  lines.push(`📘 TypeScript: ${info.hasTypeScript ? 'Yes' : 'No'}`)
+  lines.push(`TypeScript: ${info.hasTypeScript ? 'Yes' : 'No'}`)
 
   if (info.frameworks.length > 0) {
-    lines.push(`🚀 Frameworks: ${info.frameworks.join(', ')}`)
+    lines.push(`Frameworks: ${info.frameworks.join(', ')}`)
   }
 
   const scriptCount = Object.keys(info.scripts).length
   if (scriptCount > 0) {
-    lines.push(`📜 Scripts: ${scriptCount} defined`)
+    lines.push(`Scripts: ${scriptCount} defined`)
   }
 
-  lines.push(
-    `📚 Dependencies: ${info.dependencies.length} prod, ${info.devDependencies.length} dev`
-  )
+  lines.push(`Dependencies: ${info.dependencies.length} prod, ${info.devDependencies.length} dev`)
 
   return lines.join('\n')
 }

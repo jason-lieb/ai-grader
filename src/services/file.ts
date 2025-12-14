@@ -49,6 +49,7 @@ const CODE_EXTENSIONS = new Set([
 const IGNORE_DIRS = new Set([
   'node_modules',
   '.git',
+  '.direnv',
   'dist',
   'build',
   '.next',
