@@ -1,9 +1,9 @@
 {
-  "name": "@template/cli",
-  "version": "0.0.0",
+  "name": "ai-grader",
+  "version": "1.0.0",
   "type": "module",
   "license": "MIT",
-  "description": "A basic Effect CLI application",
+  "description": "AI-powered code review CLI using Effect and Amazon Bedrock",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jason-lieb/ai-grader.git"
@@ -12,16 +12,19 @@
     "access": "public",
     "directory": "dist"
   },
+  "bin": {
+    "ai-grader": "./dist/ai-grader"
+  },
   "scripts": {
-    "build": "bun build src/bin.ts --compile --outfile dist/bin",
+    "build": "bun build src/bin.ts --compile --outfile dist/ai-grader",
     "check": "tsc -b tsconfig.json",
     "lint": "eslint \"**/{src,test,examples,scripts,dtslint}/**/*.{ts,mjs}\"",
     "lint-fix": "bun lint --fix",
+    "format": "prettier --write \"**/*.{ts,js}\"",
     "test": "vitest run"
   },
   "devDependencies": {
     "@effect/cli": "^0.69.0",
-    "@effect/eslint-plugin": "^0.3.2",
     "@effect/language-service": "latest",
     "@effect/platform": "^0.90.3",
     "@effect/platform-node": "^0.96.0",
@@ -29,6 +32,7 @@
     "@eslint/compat": "1.1.1",
     "@eslint/eslintrc": "3.1.0",
     "@eslint/js": "9.10.0",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.0",
     "@types/node": "^22.5.2",
     "@typescript-eslint/eslint-plugin": "^8.4.0",
     "@typescript-eslint/parser": "^8.4.0",
@@ -39,8 +43,13 @@
     "eslint-plugin-import": "^2.30.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-sort-destructure-keys": "^2.0.0",
+    "prettier": "^3.7.4",
     "tsx": "^4.19.1",
     "typescript": "^5.6.2",
     "vitest": "^3.2.0"
+  },
+  "dependencies": {
+    "@effect/ai": "^0.32.1",
+    "@effect/ai-amazon-bedrock": "^0.12.1"
   }
 }
